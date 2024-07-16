@@ -1,0 +1,228 @@
+async function fetchTextContent(url) {
+  try {
+    const response = await fetch(`http://localhost:3000/fetch-text-content`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ url })
+    });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching text content from ${url}:`, error);
+    return null;
+  }
+}
+
+document.getElementById('comparisonForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const urls1 = document.getElementById('urls1').value.trim().split('\n').map(url => url.trim()).filter(url => url);
+  const urls2 = document.getElementById('urls2').value.trim().split('\n').map(url => url.trim()).filter(url => url);
+
+  if (urls1.length === 0 || urls2.length === 0) {
+    alert('Please enter at least one URL in both sets.');
+    return;
+  }
+
+  document.getElementById('loading').style.display = 'block';
+
+  try {
+    const textContent1 = await Promise.all(urls1.map(fetchTextContent));
+    const textContent2 = await Promise.all(urls2.map(fetchTextContent));
+
+    const response1 = await fetch('http://localhost:3000/check-links', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ urls: urls1, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true, textChecked: true })
+    });
+
+    const response2 = await fetch('http://localhost:3000/check-links', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ urls: urls2, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true, textChecked: true })
+    });
+
+    if (!response1.ok || !response2.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const results1 = await response1.json();
+    const results2 = await response2.json();
+
+    console.log('Results 1:', results1);
+    console.log('Results 2:', results2);
+
+    results1.forEach((result, index) => {
+      result.textContent = textContent1[index];
+    });
+    results2.forEach((result, index) => {
+      result.textContent = textContent2[index];
+    });
+
+    displayComparison(results1, results2);
+  } catch (error) {
+    console.error('Error fetching or processing the provided URLs:', error);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+  }
+});
+
+document.getElementById('headingRadio').addEventListener('change', showTable);
+document.getElementById('ariaRadio').addEventListener('change', showTable);
+document.getElementById('imagesRadio').addEventListener('change', showTable);
+document.getElementById('textRadio').addEventListener('change', showTable);
+document.getElementById('allRadio').addEventListener('change', showTable);
+
+function showTable() {
+  const headingTable = document.getElementById('headingTableContainer');
+  const ariaTable = document.getElementById('ariaTableContainer');
+  const imagesTable = document.getElementById('imagesTableContainer');
+  const textTable = document.getElementById('textTableContainer');
+
+  if (document.getElementById('headingRadio').checked) {
+    headingTable.style.display = '';
+    ariaTable.style.display = 'none';
+    imagesTable.style.display = 'none';
+    textTable.style.display = 'none';
+  } else if (document.getElementById('ariaRadio').checked) {
+    headingTable.style.display = 'none';
+    ariaTable.style.display = '';
+    imagesTable.style.display = 'none';
+    textTable.style.display = 'none';
+  } else if (document.getElementById('imagesRadio').checked) {
+    headingTable.style.display = 'none';
+    ariaTable.style.display = 'none';
+    imagesTable.style.display = '';
+    textTable.style.display = 'none';
+  } else if (document.getElementById('textRadio').checked) {
+    headingTable.style.display = 'none';
+    ariaTable.style.display = 'none';
+    imagesTable.style.display = 'none';
+    textTable.style.display = '';
+    console.log('Showing text content table');
+  } else if (document.getElementById('allRadio').checked) {
+    headingTable.style.display = '';
+    ariaTable.style.display = '';
+    imagesTable.style.display = '';
+    textTable.style.display = '';
+  }
+}
+
+function displayComparison(results1, results2) {
+  document.getElementById('headingHierarchyTableBody').innerHTML = '';
+  document.getElementById('ariaLabelTableBody').innerHTML = '';
+  document.getElementById('imagesTableBody').innerHTML = '';
+  document.getElementById('textContentTableBody').innerHTML = '';
+
+  const getFeatureList = (results, feature) => {
+    return results.map(pageResult => {
+      if (feature === 'textContent') {
+        return pageResult[feature];
+      }
+      return pageResult[feature];
+    }).flat().filter(item => item !== undefined && item !== null).map(item => {
+      if (item && typeof item.text === 'string') {
+        item.text = item.text.trim();
+      }
+      return item;
+    });
+  };
+
+  const headingHierarchyList1 = getFeatureList(results1, 'hierarchy');
+  const headingHierarchyList2 = getFeatureList(results2, 'hierarchy');
+  const ariaLabelList1 = getFeatureList(results1, 'ariaLinks');
+  const ariaLabelList2 = getFeatureList(results2, 'ariaLinks');
+  const imageList1 = getFeatureList(results1, 'images');
+  const imageList2 = getFeatureList(results2, 'images');
+  const textContentList1 = getFeatureList(results1, 'textContent');
+  const textContentList2 = getFeatureList(results2, 'textContent');
+
+  console.log('Text Content List 1:', textContentList1);
+  console.log('Text Content List 2:', textContentList2);
+
+  populateTable('headingHierarchyTableBody', headingHierarchyList1, headingHierarchyList2);
+  populateTable('ariaLabelTableBody', ariaLabelList1, ariaLabelList2);
+  populateTable('imagesTableBody', imageList1, imageList2);
+  populateTable('textContentTableBody', textContentList1, textContentList2);
+
+  console.log('Populating text content table with:', textContentList1, textContentList2);
+}
+
+function populateTable(tableBodyId, list1, list2) {
+  const tableBody = document.getElementById(tableBodyId);
+  const maxLength = Math.max(list1.length, list2.length);
+
+  for (let i = 0; i < maxLength; i++) {
+    const tr = document.createElement('tr');
+    const set1Cell = document.createElement('td');
+    const set2Cell = document.createElement('td');
+    const diffCell = document.createElement('td');
+
+    const item1 = list1[i] ? (tableBodyId === 'textContentTableBody' ? list1[i].text : JSON.stringify(list1[i], null, 2)) : '';
+    const item2 = list2[i] ? (tableBodyId === 'textContentTableBody' ? list2[i].text : JSON.stringify(list2[i], null, 2)) : '';
+
+    set1Cell.textContent = item1;
+    set2Cell.textContent = item2;
+    diffCell.innerHTML = getDifference(item1, item2);
+
+    highlightDifferences(set1Cell, set2Cell, item1, item2);
+
+    tr.appendChild(set1Cell);
+    tr.appendChild(set2Cell);
+    tr.appendChild(diffCell);
+    tableBody.appendChild(tr);
+  }
+}
+
+function highlightDifferences(set1Cell, set2Cell, item1, item2) {
+  const obj1 = typeof item1 === 'string' ? { text: item1 } : JSON.parse(item1);
+  const obj2 = typeof item2 === 'string' ? { text: item2 } : JSON.parse(item2);
+
+  for (const key in obj1) {
+    if (obj1[key] !== obj2[key]) {
+      highlightCell(set1Cell, obj1[key], 'highlightSet1');
+      highlightCell(set2Cell, obj2[key], 'highlightSet2');
+    }
+  }
+}
+
+function highlightCell(cell, value, highlightClass) {
+  if (!cell.textContent.includes(value)) return;
+
+  const regex = new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+  cell.innerHTML = cell.innerHTML.replace(regex, `<span class="${highlightClass}">${value}</span>`);
+}
+
+function getDifference(item1, item2) {
+  if (!item1 || !item2) return 'Difference: One item is missing';
+
+  const dmp = new diff_match_patch();
+  const diff = dmp.diff_main(item1, item2);
+  dmp.diff_cleanupSemantic(diff);
+
+  let diffHtml = '';
+  diff.forEach(([operation, text]) => {
+    switch (operation) {
+      case 1: // Insertion
+        diffHtml += `<ins style="background-color: #aaffaa;">${text}</ins>`;
+        break;
+      case -1: // Deletion
+        diffHtml += `<del style="background-color: #ffaaaa;">${text}</del>`;
+        break;
+      case 0: // No change
+        diffHtml += text;
+        break;
+    }
+  });
+
+  return diffHtml;
+}

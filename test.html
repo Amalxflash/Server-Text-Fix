@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inner Links Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        .filter-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #resultsContainer {
+            margin-top: 20px;
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .results-table th {
+            background-color: #f2f2f2;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Inner Links Checker</h1>
+    <form id="linkCheckerForm">
+        <textarea id="urls" placeholder="Enter URLs (one per line)" required></textarea>
+        <div class="filter-container">
+            <label>
+                <input type="checkbox" id="filter"> Filter Header & Footer
+            </label>
+            <label>
+                <input type="checkbox" id="hierarchy"> Check Heading Hierarchy
+            </label>
+            <label>
+                <input type="checkbox" id="ariaLabel"> Check Aria-label Links
+            </label>
+            <label>
+                <input type="checkbox" id="image"> Check Image Tags
+            </label>
+            <label>
+                <input type="checkbox" id="meta"> Check Meta Properties
+            </label>
+        </div>
+        <button type="submit">Check Links</button>
+    </form>
+
+    <div id="loading">
+        <img src="https://media4.giphy.com/media/dumfpsshcqTsh233xF/giphy.gif?cid=6c09b95269s7q2hsrd9bw071ndfbf05qze2e76djv1o4q3jb&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s" alt="Loading">
+    </div>
+
+    <div id="resultsContainer"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.querySelector('form');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const loadingGif = document.getElementById('loading');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loadingGif.style.display = 'block';
+            resultsContainer.innerHTML = '';
+
+            const urls = document.getElementById('urls').value.split('\n').filter(url => url.trim() !== '');
+            const filterChecked = document.getElementById('filter').checked;
+            const hierarchyChecked = document.getElementById('hierarchy').checked;
+            const ariaLabelChecked = document.getElementById('ariaLabel').checked;
+            const imageChecked = document.getElementById('image').checked;
+            const metaChecked = document.getElementById('meta').checked;
+
+            try {
+                const response = await fetch('/check-links', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ urls, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const results = await response.json();
+
+                // Use Web Workers for parallel processing of results
+                const workerCount = navigator.hardwareConcurrency || 4;
+                const workers = [];
+                const chunkSize = Math.ceil(results.length / workerCount);
+
+                for (let i = 0; i < workerCount; i++) {
+                    const worker = new Worker('resultWorker.js');
+                    workers.push(worker);
+
+                    const start = i * chunkSize;
+                    const end = Math.min((i + 1) * chunkSize, results.length);
+                    const chunk = results.slice(start, end);
+
+                    worker.postMessage({ chunk, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked });
+                }
+
+                let processedResults = [];
+
+                await Promise.all(workers.map(worker => new Promise((resolve) => {
+                    worker.onmessage = (event) => {
+                        processedResults = processedResults.concat(event.data);
+                        resolve();
+                    };
+                })));
+
+                displayResults(processedResults);
+            } catch (error) {
+                console.error('Error:', error);
+                resultsContainer.innerHTML = '<p>An error occurred while processing the links.</p>';
+            } finally {
+                loadingGif.style.display = 'none';
+            }
+        });
+
+        function displayResults(results) {
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.innerHTML = result.html;
+                resultsContainer.appendChild(resultDiv);
+            });
+        }
+    });
+    </script>
+</body>
+</html>
