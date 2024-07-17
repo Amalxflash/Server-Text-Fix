@@ -167,11 +167,11 @@ function populateTable(tableBodyId, list1, list2) {
     const set2Cell = document.createElement('td');
     const diffCell = document.createElement('td');
 
-    const item1 = list1[i] ? (tableBodyId === 'textContentTableBody' ? list1[i].text : JSON.stringify(list1[i], null, 2)) : '';
-    const item2 = list2[i] ? (tableBodyId === 'textContentTableBody' ? list2[i].text : JSON.stringify(list2[i], null, 2)) : '';
+    const item1 = list1[i] ? JSON.stringify(list1[i], null, 2) : '';
+    const item2 = list2[i] ? JSON.stringify(list2[i], null, 2) : '';
 
-    set1Cell.textContent = item1;
-    set2Cell.textContent = item2;
+    set1Cell.innerHTML = item1;
+    set2Cell.innerHTML = item2;
     diffCell.innerHTML = getDifference(item1, item2);
 
     highlightDifferences(set1Cell, set2Cell, item1, item2);
@@ -184,21 +184,24 @@ function populateTable(tableBodyId, list1, list2) {
 }
 
 function highlightDifferences(set1Cell, set2Cell, item1, item2) {
-  const obj1 = typeof item1 === 'string' ? { text: item1 } : JSON.parse(item1);
-  const obj2 = typeof item2 === 'string' ? { text: item2 } : JSON.parse(item2);
+  const obj1 = JSON.parse(item1 || '{}');
+  const obj2 = JSON.parse(item2 || '{}');
 
-  for (const key in obj1) {
-    if (obj1[key] !== obj2[key]) {
-      highlightCell(set1Cell, obj1[key], 'highlightSet1');
-      highlightCell(set2Cell, obj2[key], 'highlightSet2');
+  const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+
+  allKeys.forEach(key => {
+    if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
+      highlightCell(set1Cell, JSON.stringify(obj1[key]), 'highlightSet1');
+      highlightCell(set2Cell, JSON.stringify(obj2[key]), 'highlightSet2');
     }
-  }
+  });
 }
 
 function highlightCell(cell, value, highlightClass) {
-  if (!cell.textContent.includes(value)) return;
+  if (!cell.innerHTML.includes(value)) return;
 
-  const regex = new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+  const escapedValue = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(escapedValue, 'g');
   cell.innerHTML = cell.innerHTML.replace(regex, `<span class="${highlightClass}">${value}</span>`);
 }
 
