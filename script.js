@@ -87,6 +87,15 @@ document.getElementById('urlForm').addEventListener('submit', async (event) => {
       return `Unknown Status (${statusCode})`;
     }
   }
+
+  function getColorForURL(url) {
+    let hash = 0;
+    for (let i = 0; i < url.length; i++) {
+      hash = url.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const color = Math.floor(Math.abs(Math.sin(hash) * 16777215) % 16777215).toString(16);
+    return '#' + '0'.repeat(6 - color.length) + color;
+  }
   
   function populateResultsTable(results) {
     const resultsTableBody = document.getElementById('resultsTableBody');
@@ -108,14 +117,14 @@ document.getElementById('urlForm').addEventListener('submit', async (event) => {
         errorRow.appendChild(errorCell);
         resultsTableBody.appendChild(errorRow);
       } else {
+        const urlColor = getColorForURL(pageResult.pageUrl);
         pageResult.links.forEach(result => {
           const row = document.createElement('tr');
   
           const nameCell = document.createElement('td');
           nameCell.textContent = pageResult.pageUrl;
-          if (!pageResult.pageUrl.includes('microsoft.com')) {
-            nameCell.classList.add('orange');
-          }
+          nameCell.style.backgroundColor = urlColor;
+          nameCell.style.color = '#ffffff';
   
           const urlCell = document.createElement('td');
           urlCell.textContent = result.url;
