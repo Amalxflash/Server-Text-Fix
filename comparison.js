@@ -124,17 +124,15 @@ function displayComparison(results1, results2) {
   document.getElementById('textContentTableBody').innerHTML = '';
 
   const getFeatureList = (results, feature) => {
-    return results.map(pageResult => {
-      if (feature === 'textContent') {
-        return pageResult[feature];
-      }
-      return pageResult[feature];
-    }).flat().filter(item => item !== undefined && item !== null).map(item => {
-      if (item && typeof item.text === 'string') {
-        item.text = item.text.trim();
-      }
-      return item;
-    });
+    return results.map(pageResult => pageResult[feature])
+      .flat()
+      .filter(item => item !== undefined && item !== null)
+      .map(item => {
+        if (item && typeof item.text === 'string') {
+          item.text = item.text.trim();
+        }
+        return item;
+      });
   };
 
   const headingHierarchyList1 = getFeatureList(results1, 'hierarchy');
@@ -167,8 +165,8 @@ function populateTable(tableBodyId, list1, list2) {
     const set2Cell = document.createElement('td');
     const diffCell = document.createElement('td');
 
-    const item1 = list1[i] ? JSON.stringify(list1[i], null, 2) : '';
-    const item2 = list2[i] ? JSON.stringify(list2[i], null, 2) : '';
+    const item1 = list1[i] ? formatItem(list1[i]) : '';
+    const item2 = list2[i] ? formatItem(list2[i]) : '';
 
     set1Cell.innerHTML = item1;
     set2Cell.innerHTML = item2;
@@ -183,16 +181,59 @@ function populateTable(tableBodyId, list1, list2) {
   }
 }
 
-function highlightDifferences(set1Cell, set2Cell, item1, item2) {
-  const obj1 = JSON.parse(item1 || '{}');
-  const obj2 = JSON.parse(item2 || '{}');
+function formatItem(item) {
+  if (typeof item !== 'object' || item === null) {
+    return String(item);
+  }
 
-  const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
+  let formattedString = '';
+  
+  // Special handling for heading hierarchy
+  if ('tag' in item && 'text' in item) {
+    return `<strong>${item.tag}:</strong> ${item.text}`;
+  }
+  
+  // Special handling for aria links
+  if ('url' in item && 'ariaLabel' in item) {
+    formattedString += `<strong>URL:</strong> ${item.url}<br><br>`;
+    formattedString += `<strong>Aria Label:</strong> ${item.ariaLabel}<br><br>`;
+    if (item.target) {
+      formattedString += `<strong>Target:</strong> ${item.target}`;
+    }
+    return formattedString;
+  }
+  
+  // Special handling for images
+  if ('src' in item && 'alt' in item) {
+    formattedString += `<strong>Source:</strong> ${item.src}<br><br>`;
+    formattedString += `<strong>Alt Text:</strong> ${item.alt || '(No alt text)'}`;
+    return formattedString;
+  }
+  
+  // For text content or any other object
+  for (const [key, value] of Object.entries(item)) {
+    formattedString += `<strong>${key}:</strong> ${value}<br>`;
+  }
+  
+  return formattedString.trim();
+}
+
+function highlightDifferences(set1Cell, set2Cell, item1, item2) {
+  const lines1 = item1.split('<br>');
+  const lines2 = item2.split('<br>');
+
+  const allKeys = new Set([
+    ...lines1.map(line => line.split(':')[0]),
+    ...lines2.map(line => line.split(':')[0])
+  ]);
 
   allKeys.forEach(key => {
-    if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
-      highlightCell(set1Cell, JSON.stringify(obj1[key]), 'highlightSet1');
-      highlightCell(set2Cell, JSON.stringify(obj2[key]), 'highlightSet2');
+    const value1 = lines1.find(line => line.startsWith(key))?.split(':')[1]?.trim();
+    const value2 = lines2.find(line => line.startsWith(key))?.split(':')[1]?.trim();
+
+    if (value1 !== value2) {
+      highlightCell(set1Cell, `${key}: ${value1}`, 'highlightSet1');
+      highlightCell(set2Cell, `${key}: ${value2}`, 'highlightSet2');
     }
   });
 }
@@ -206,6 +247,10 @@ function highlightCell(cell, value, highlightClass) {
 }
 
 function getDifference(item1, item2) {
+  if (item1 === item2) {
+    return 'No difference';
+  }
+
   if (!item1 || !item2) return 'Difference: One item is missing';
 
   const dmp = new diff_match_patch();
@@ -213,13 +258,16 @@ function getDifference(item1, item2) {
   dmp.diff_cleanupSemantic(diff);
 
   let diffHtml = '';
+  let hasDifference = false;
   diff.forEach(([operation, text]) => {
     switch (operation) {
       case 1: // Insertion
         diffHtml += `<ins style="background-color: #aaffaa;">${text}</ins>`;
+        hasDifference = true;
         break;
       case -1: // Deletion
         diffHtml += `<del style="background-color: #ffaaaa;">${text}</del>`;
+        hasDifference = true;
         break;
       case 0: // No change
         diffHtml += text;
@@ -227,5 +275,5 @@ function getDifference(item1, item2) {
     }
   });
 
-  return diffHtml;
+  return hasDifference ? diffHtml : 'No difference';
 }
