@@ -143,8 +143,8 @@ app.post('/check-links', async (req, res) => {
           }
           elements.each((index, element) => {
             hierarchy.push({
-              text: $(element).text().replace(/[\t\n]/g, '').trim(),
-              tag: $(element).prop('tagName')
+              tag: $(element).prop('tagName'),
+              text: $(element).text().replace(/[\t\n]/g, '').trim()
             });
           });
         }
@@ -156,8 +156,8 @@ app.post('/check-links', async (req, res) => {
           }
           elements.each((index, element) => {
             ariaLinks.push({
-              ariaLabel: $(element).attr('aria-label').replace(/[\t\n]/g, '').trim(),
               url: $(element).attr('href'),
+              ariaLabel: $(element).attr('aria-label').replace(/[\t\n]/g, '').trim(),
               target: $(element).attr('target') || '_self'
             });
           });
@@ -245,7 +245,6 @@ app.post('/fetch-text-content', async (req, res) => {
       const text = $(element).text().trim();
       if (text) {
         textContent.push({
-          tag: element.name,
           text: text
         });
       }
@@ -264,10 +263,4 @@ app.listen(port, () => {
 }).on('error', (error) => {
   console.error('Error starting server:', error);
 });
-              
-              
-              
-              
-              
-              
               
