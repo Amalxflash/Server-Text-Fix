@@ -163,84 +163,90 @@ document.getElementById('urlForm').addEventListener('submit', async (event) => {
     const hierarchyTableBody = document.getElementById('hierarchyTableBody');
     hierarchyTableBody.innerHTML = '';
     results.forEach(pageResult => {
-      pageResult.hierarchy.forEach(item => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${pageResult.pageUrl}</td>
-          <td>${item.text}</td>
-          <td>${item.tag}</td>
-        `;
-        hierarchyTableBody.appendChild(row);
-      });
+        const urlColor = getColorForURL(pageResult.pageUrl);
+        pageResult.hierarchy.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="background-color: ${urlColor}; color: #ffffff;">${pageResult.pageUrl}</td>
+                <td>${item.text}</td>
+                <td>${item.tag}</td>
+            `;
+            hierarchyTableBody.appendChild(row);
+        });
     });
   
     // Populate aria-label table
     const ariaLabelTableBody = document.getElementById('ariaLabelTableBody');
     ariaLabelTableBody.innerHTML = '';
     results.forEach(pageResult => {
-      pageResult.ariaLinks.forEach(link => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${pageResult.pageUrl}</td>
-          <td>${link.ariaLabel}</td>
-          <td>${link.url}</td>
-          <td>${link.target}</td>
-        `;
-        ariaLabelTableBody.appendChild(row);
-      });
+        const urlColor = getColorForURL(pageResult.pageUrl);
+        pageResult.ariaLinks.forEach(link => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="background-color: ${urlColor}; color: #ffffff;">${pageResult.pageUrl}</td>
+                <td>${link.ariaLabel}</td>
+                <td>${link.url}</td>
+                <td>${link.target}</td>
+            `;
+            ariaLabelTableBody.appendChild(row);
+        });
     });
   
     // Populate image table
     const imageTableBody = document.getElementById('imageTableBody');
     imageTableBody.innerHTML = '';
     results.forEach(pageResult => {
-      pageResult.images.forEach(image => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${pageResult.pageUrl}</td>
-          <td>${image.src}</td>
-          <td>${image.alt || ''}</td>
-        `;
-        imageTableBody.appendChild(row);
-      });
+        const urlColor = getColorForURL(pageResult.pageUrl);
+        pageResult.images.forEach(image => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="background-color: ${urlColor}; color: #ffffff;">${pageResult.pageUrl}</td>
+                <td>${image.src}</td>
+                <td>${image.alt || ''}</td>
+            `;
+            imageTableBody.appendChild(row);
+        });
     });
+
   
     // Populate meta table
     const metaTableBody = document.getElementById('metaTableBody');
     metaTableBody.innerHTML = '';
     results.forEach(pageResult => {
-      pageResult.metaProperties.forEach(meta => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${pageResult.pageUrl}</td>
-          <td>${meta.property || meta.name || meta.charset || meta['http-equiv'] || 'N/A'}</td>
-          <td>${meta.content || meta.charset || 'N/A'}</td>
-        `;
-        metaTableBody.appendChild(row);
-      });
+        const urlColor = getColorForURL(pageResult.pageUrl);
+        pageResult.metaProperties.forEach(meta => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="background-color: ${urlColor}; color: #ffffff;">${pageResult.pageUrl}</td>
+                <td>${meta.property || meta.name || meta.charset || meta['http-equiv'] || 'N/A'}</td>
+                <td>${meta.content || meta.charset || 'N/A'}</td>
+            `;
+            metaTableBody.appendChild(row);
+        });
     });
   
     // Populate region-specific table
     const regionSpecificTableBody = document.getElementById('regionSpecificTableBody');
     regionSpecificTableBody.innerHTML = '';
     results.forEach(pageResult => {
-      if (pageResult.regionSpecificLanguages && pageResult.regionSpecificLanguages.length > 0) {
-        const row = document.createElement('tr');
-        const mainUrl = new URL(pageResult.pageUrl);
-        
-        row.innerHTML = `
-          <td>${pageResult.pageUrl}</td>
-          <td>${pageResult.regionSpecificLanguages.join(', ')}</td>
-          <td>${pageResult.regionSpecificLanguages.map(lang => {
-            const regionSpecificUrl = new URL(pageResult.pageUrl);
-            regionSpecificUrl.pathname = `/${lang}${mainUrl.pathname}`;
-            return `<a href="${regionSpecificUrl.href}" target="_blank">${lang}</a>`;
-          }).join(', ')}</td>
-        `;
-        regionSpecificTableBody.appendChild(row);
-      }
+        const urlColor = getColorForURL(pageResult.pageUrl);
+        if (pageResult.regionSpecificLanguages && pageResult.regionSpecificLanguages.length > 0) {
+            const row = document.createElement('tr');
+            const mainUrl = new URL(pageResult.pageUrl);
+            
+            row.innerHTML = `
+                <td style="background-color: ${urlColor}; color: #ffffff;">${pageResult.pageUrl}</td>
+                <td>${pageResult.regionSpecificLanguages.join(', ')}</td>
+                <td>${pageResult.regionSpecificLanguages.map(lang => {
+                    const regionSpecificUrl = new URL(pageResult.pageUrl);
+                    regionSpecificUrl.pathname = `/${lang}${mainUrl.pathname}`;
+                    return `<a href="${regionSpecificUrl.href}" target="_blank">${lang}</a>`;
+                }).join(', ')}</td>
+            `;
+            regionSpecificTableBody.appendChild(row);
+        }
     });
-  }
+}
   
   function updateTableVisibility() {
     const hierarchyChecked = document.getElementById('hierarchy').checked;
