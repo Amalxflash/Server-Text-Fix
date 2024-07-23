@@ -150,6 +150,7 @@ th:nth-child(5), td:nth-child(5) { width: 20%; }
 }
 
 .filter-container {
+  margin-left: 123px;
   display: flex;
   justify-content: space-between;
   align-items: stretch;
@@ -179,7 +180,7 @@ th:nth-child(5), td:nth-child(5) { width: 20%; }
 .radio-group > label,
 .checkbox-group > input[type="checkbox"],
 .checkbox-group > label {
-  margin-right: 12px;
+  margin-right: 8px;
   margin-bottom: 8px;
   white-space: nowrap;
 }
