@@ -29,6 +29,8 @@
     <label for="imagesRadio">Images Comparison</label><br>
     <input type="radio" id="textRadio" name="comparisonType" value="text">
     <label for="textRadio">Text Content Comparison</label><br>
+    <input type="radio" id="metaRadio" name="comparisonType" value="meta"> 
+    <label for="metaRadio">Meta Tags Comparison</label><br>
   </div>
 
   <div id="resultsContainer">
@@ -88,6 +90,21 @@
           <tbody id="textContentTableBody"></tbody>
         </table>
       </div>
+
+      <div id="metaTableContainer" style="display:none;">
+        <h2>Meta Tags Comparison</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Set 1</th>
+              <th>Set 2</th>
+              <th>Difference</th>
+            </tr>
+          </thead>
+          <tbody id="metaTableBody"></tbody>
+        </table>
+      </div>
+      
     </div>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
