@@ -31,6 +31,14 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
 
   document.getElementById('loading').style.display = 'block';
 
+  const comparisonType = document.querySelector('input[name="comparisonType"]:checked').value;
+  const filterChecked = false;
+  const hierarchyChecked = comparisonType === 'all' || comparisonType === 'heading';
+  const ariaLabelChecked = comparisonType === 'all' || comparisonType === 'aria';
+  const imageChecked = comparisonType === 'all' || comparisonType === 'images';
+  const textChecked = comparisonType === 'all' || comparisonType === 'text';
+  const metaChecked = comparisonType === 'all' || comparisonType === 'meta';
+
   try {
     const textContent1 = await Promise.all(urls1.map(fetchTextContent));
     const textContent2 = await Promise.all(urls2.map(fetchTextContent));
@@ -40,7 +48,7 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ urls: urls1, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true, textChecked: true })
+      body: JSON.stringify({ urls: urls1, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked, textChecked })
     });
 
     const response2 = await fetch('http://localhost:3000/check-links', {
@@ -48,7 +56,7 @@ document.getElementById('comparisonForm').addEventListener('submit', async (even
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ urls: urls2, filterChecked: false, hierarchyChecked: true, ariaLabelChecked: true, imageChecked: true, textChecked: true })
+      body: JSON.stringify({ urls: urls2, filterChecked, hierarchyChecked, ariaLabelChecked, imageChecked, metaChecked, textChecked })
     });
 
     if (!response1.ok || !response2.ok) {
@@ -80,6 +88,7 @@ document.getElementById('headingRadio').addEventListener('change', showTable);
 document.getElementById('ariaRadio').addEventListener('change', showTable);
 document.getElementById('imagesRadio').addEventListener('change', showTable);
 document.getElementById('textRadio').addEventListener('change', showTable);
+document.getElementById('metaRadio').addEventListener('change', showTable);
 document.getElementById('allRadio').addEventListener('change', showTable);
 
 function showTable() {
@@ -87,33 +96,30 @@ function showTable() {
   const ariaTable = document.getElementById('ariaTableContainer');
   const imagesTable = document.getElementById('imagesTableContainer');
   const textTable = document.getElementById('textTableContainer');
+  const metaTable = document.getElementById('metaTableContainer');
+
+  headingTable.style.display = 'none';
+  ariaTable.style.display = 'none';
+  imagesTable.style.display = 'none';
+  textTable.style.display = 'none';
+  metaTable.style.display = 'none';
 
   if (document.getElementById('headingRadio').checked) {
     headingTable.style.display = '';
-    ariaTable.style.display = 'none';
-    imagesTable.style.display = 'none';
-    textTable.style.display = 'none';
   } else if (document.getElementById('ariaRadio').checked) {
-    headingTable.style.display = 'none';
     ariaTable.style.display = '';
-    imagesTable.style.display = 'none';
-    textTable.style.display = 'none';
   } else if (document.getElementById('imagesRadio').checked) {
-    headingTable.style.display = 'none';
-    ariaTable.style.display = 'none';
     imagesTable.style.display = '';
-    textTable.style.display = 'none';
   } else if (document.getElementById('textRadio').checked) {
-    headingTable.style.display = 'none';
-    ariaTable.style.display = 'none';
-    imagesTable.style.display = 'none';
     textTable.style.display = '';
-    console.log('Showing text content table');
+  } else if (document.getElementById('metaRadio').checked) {
+    metaTable.style.display = '';
   } else if (document.getElementById('allRadio').checked) {
     headingTable.style.display = '';
     ariaTable.style.display = '';
     imagesTable.style.display = '';
     textTable.style.display = '';
+    metaTable.style.display = '';
   }
 }
 
@@ -122,6 +128,7 @@ function displayComparison(results1, results2) {
   document.getElementById('ariaLabelTableBody').innerHTML = '';
   document.getElementById('imagesTableBody').innerHTML = '';
   document.getElementById('textContentTableBody').innerHTML = '';
+  document.getElementById('metaTableBody').innerHTML = '';
 
   const getFeatureList = (results, feature) => {
     return results.map(pageResult => pageResult[feature])
@@ -143,6 +150,8 @@ function displayComparison(results1, results2) {
   const imageList2 = getFeatureList(results2, 'images');
   const textContentList1 = getFeatureList(results1, 'textContent');
   const textContentList2 = getFeatureList(results2, 'textContent');
+  const metaList1 = getFeatureList(results1, 'metaProperties');
+  const metaList2 = getFeatureList(results2, 'metaProperties');
 
   console.log('Text Content List 1:', textContentList1);
   console.log('Text Content List 2:', textContentList2);
@@ -151,6 +160,7 @@ function displayComparison(results1, results2) {
   populateTable('ariaLabelTableBody', ariaLabelList1, ariaLabelList2);
   populateTable('imagesTableBody', imageList1, imageList2);
   populateTable('textContentTableBody', textContentList1, textContentList2);
+  populateMetaTable('metaTableBody', metaList1, metaList2);
 
   console.log('Populating text content table with:', textContentList1, textContentList2);
 }
@@ -167,6 +177,32 @@ function populateTable(tableBodyId, list1, list2) {
 
     const item1 = list1[i] ? formatItem(list1[i]) : '';
     const item2 = list2[i] ? formatItem(list2[i]) : '';
+
+    set1Cell.innerHTML = item1;
+    set2Cell.innerHTML = item2;
+    diffCell.innerHTML = getDifference(item1, item2);
+
+    highlightDifferences(set1Cell, set2Cell, item1, item2);
+
+    tr.appendChild(set1Cell);
+    tr.appendChild(set2Cell);
+    tr.appendChild(diffCell);
+    tableBody.appendChild(tr);
+  }
+}
+
+function populateMetaTable(tableBodyId, list1, list2) {
+  const tableBody = document.getElementById(tableBodyId);
+  const maxLength = Math.max(list1.length, list2.length);
+
+  for (let i = 0; i < maxLength; i++) {
+    const tr = document.createElement('tr');
+    const set1Cell = document.createElement('td');
+    const set2Cell = document.createElement('td');
+    const diffCell = document.createElement('td');
+
+    const item1 = list1[i] ? formatMetaItem(list1[i]) : '';
+    const item2 = list2[i] ? formatMetaItem(list2[i]) : '';
 
     set1Cell.innerHTML = item1;
     set2Cell.innerHTML = item2;
@@ -213,6 +249,21 @@ function formatItem(item) {
   // For text content or any other object
   for (const [key, value] of Object.entries(item)) {
     formattedString += `<strong>${key}:</strong> ${value}<br>`;
+  }
+  
+  return formattedString.trim();
+}
+
+function formatMetaItem(item) {
+  if (typeof item !== 'object' || item === null) {
+    return String(item);
+  }
+
+  let formattedString = '';
+  
+  // For meta properties
+  for (const [key, value] of Object.entries(item)) {
+    formattedString += `<strong>${key}:</strong> ${value}<br><br>`;
   }
   
   return formattedString.trim();
